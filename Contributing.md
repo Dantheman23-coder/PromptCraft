@@ -1,5 +1,3 @@
-### CONTRIBUTING.md
-
 # Contributing to PromptCraft
 
 Thank you for considering contributing to **PromptCraft**! We welcome contributions from the community to make this repository even better. Here’s how you can get involved:
