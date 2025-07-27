@@ -1,0 +1,44 @@
+[project]
+name = "promptcraft"
+version = "0.1.0"
+description = "Tools for crafting high-impact prompts"
+authors = [{name = "PromptCraft Team", email = "noreply@example.com"}]
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+keywords = ["prompt", "llm", "openai"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/Dantheman23-coder/PromptCraft"
+Documentation = "https://promptcraft.readthedocs.io"
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "ruff", "black"]
+docs = ["mkdocs", "mkdocs-material"]
+
+[project.scripts]
+promptcraft = "promptcraft.cli:cli"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["promptcraft*"]
+exclude = ["tests*", "docs*", "assets*"]
