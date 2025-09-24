@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: pre-commit/action@v3.0.1
+      - name: Install deps
+        run: |
+          pip install -e .[dev,docs]
+      - name: Run tests
+        run: pytest -q
+      - name: Build docs
+        run: mkdocs build --strict
