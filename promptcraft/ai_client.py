@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from types import SimpleNamespace
 from typing import Any, Protocol
 
@@ -20,29 +21,93 @@ class _OpenAIProtocol(Protocol):
     ChatCompletion: _ChatCompletion
 
 
-def _load_openai() -> _OpenAIProtocol:
-    """Return the OpenAI ChatCompletion client or a helpful stub.
+class _OpenAIShim:
+    """Compatibility wrapper for the OpenAI 1.x client.
 
-    Importing ``openai`` at module load time makes tests fail when the optional
-    dependency is not installed.  Instead we lazily import the module and fall
-    back to a stub that raises a descriptive error when actually invoked.  Test
-    suites can still monkeypatch ``promptcraft.ai_client.openai`` thanks to the
-    attribute assignment below.
+    The 1.x release removed the ``ChatCompletion`` module-level helper and
+    requires instantiating :class:`openai.OpenAI`.  This shim exposes an object
+    compatible with the legacy interface used throughout the code base while
+    lazily constructing the modern client when needed.
     """
 
+    _FORWARDED_ATTRS = {"api_key", "base_url"}
+
+    def __init__(self, openai_module: Any):
+        object.__setattr__(self, "_openai_module", openai_module)
+        object.__setattr__(self, "_client", None)
+        object.__setattr__(self, "_client_kwargs", {})
+        object.__setattr__(
+            self,
+            "ChatCompletion",
+            SimpleNamespace(create=self._create_chat_completion),
+        )
+
+    def _create_chat_completion(
+        self,
+        *,
+        model: str,
+        messages: list[dict[str, str]],
+        **kwargs: Any,
+    ) -> Any:
+        client = object.__getattribute__(self, "_client")
+        if client is None:
+            client_kwargs: dict[str, Any] = dict(
+                object.__getattribute__(self, "_client_kwargs")
+            )
+            openai_module = object.__getattribute__(self, "_openai_module")
+            client = openai_module.OpenAI(**client_kwargs)
+            object.__setattr__(self, "_client", client)
+        return client.chat.completions.create(model=model, messages=messages, **kwargs)
+
+    def __getattr__(self, name: str) -> Any:
+        if name in self._FORWARDED_ATTRS:
+            client_kwargs = object.__getattribute__(self, "_client_kwargs")
+            return client_kwargs.get(name)
+        raise AttributeError(name)
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        if name in self._FORWARDED_ATTRS:
+            client_kwargs = object.__getattribute__(self, "_client_kwargs")
+            if value in (None, ""):
+                client_kwargs.pop(name, None)
+            else:
+                client_kwargs[name] = value
+            object.__setattr__(self, "_client", None)
+        else:
+            object.__setattr__(self, name, value)
+
+
+def _load_openai() -> _OpenAIProtocol:
+    """Return the OpenAI ChatCompletion client or a helpful stub."""
+
     try:  # pragma: no cover - exercised indirectly via tests
-        import openai as _openai
+        _openai = importlib.import_module("openai")
     except ModuleNotFoundError as exc:  # pragma: no cover - behaviour asserted in tests
+        missing_exc = exc
+
         class _MissingOpenAI:
+            api_key: str | None = None
+            base_url: str | None = None
+
             class ChatCompletion:
                 @staticmethod
                 def create(*args: Any, **kwargs: Any) -> Any:
                     raise RuntimeError(
                         "The 'openai' package is required for API interactions. "
                         "Install it with `pip install openai` or configure a mock."
-                    ) from exc
+                    ) from missing_exc
 
-        return SimpleNamespace(ChatCompletion=_MissingOpenAI.ChatCompletion)
+        return SimpleNamespace(
+            ChatCompletion=_MissingOpenAI.ChatCompletion,
+            api_key=None,
+            base_url=None,
+        )
+
+    if hasattr(_openai, "ChatCompletion"):
+        return _openai  # legacy <1.0 API
+
+    if hasattr(_openai, "OpenAI"):
+        return _OpenAIShim(_openai)
 
     return _openai
 
@@ -58,6 +123,8 @@ class AIClient:
         # Configure API key if the real client is available
         if hasattr(openai, "api_key") and self.settings.openai_api_key:
             setattr(openai, "api_key", self.settings.openai_api_key)
+        if hasattr(openai, "base_url") and self.settings.openai_base_url:
+            setattr(openai, "base_url", self.settings.openai_base_url)
 
     def chat(self, prompt: str) -> str:
         cache_key = f"{self.model}:{prompt}"

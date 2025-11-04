@@ -18,6 +18,7 @@ Homepage = "https://github.com/Dantheman23-coder/PromptCraft"
 Documentation = "https://promptcraft.readthedocs.io"
 
 [project.dependencies]
+click = "*"
 openai = "*"
 tinydb = "*"
 pydantic-settings = "*"
@@ -42,6 +43,9 @@ line-length = 88
 [tool.mypy]
 python_version = "3.10"
 ignore_missing_imports = true
+
+[tool.setuptools]
+py-modules = ["ai_client", "cache", "config", "prompt", "score"]
 
 [tool.setuptools.packages.find]
 where = ["."]
