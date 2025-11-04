@@ -21,18 +21,37 @@ class _OpenAIProtocol(Protocol):
     ChatCompletion: _ChatCompletion
 
 
-def _load_openai() -> _OpenAIProtocol:
-    """Return the OpenAI ChatCompletion client or a helpful stub.
+    _FORWARDED_ATTRS = {"api_key", "base_url"}
 
-    Importing ``openai`` at module load time makes tests fail when the optional
-    dependency is not installed.  Instead we lazily import the module and fall
-    back to a stub that raises a descriptive error when actually invoked.  Test
-    suites can still monkeypatch ``promptcraft.ai_client.openai`` thanks to the
-    attribute assignment below.
-    """
-
+        object.__setattr__(self, "_client_kwargs", {})
+    def _create_chat_completion(
+        self,
+        *,
+        model: str,
+        messages: list[dict[str, str]],
+        **kwargs: Any,
+    ) -> Any:
+            client_kwargs: dict[str, Any] = dict(
+                object.__getattribute__(self, "_client_kwargs")
+            )
+        if name in self._FORWARDED_ATTRS:
+            client_kwargs = object.__getattribute__(self, "_client_kwargs")
+            return client_kwargs.get(name)
+        if name in self._FORWARDED_ATTRS:
+            client_kwargs = object.__getattribute__(self, "_client_kwargs")
+            if value in (None, ""):
+                client_kwargs.pop(name, None)
+            else:
+                client_kwargs[name] = value
     try:  # pragma: no cover - exercised indirectly via tests
-        import openai as _openai
+            base_url: str | None = None
+        return SimpleNamespace(
+            ChatCompletion=_MissingOpenAI.ChatCompletion,
+            api_key=None,
+            base_url=None,
+        )
+        if hasattr(openai, "base_url") and self.settings.openai_base_url:
+            setattr(openai, "base_url", self.settings.openai_base_url)
     except ModuleNotFoundError as exc:  # pragma: no cover - behaviour asserted in tests
         class _MissingOpenAI:
             class ChatCompletion:
