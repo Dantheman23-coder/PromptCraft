@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from types import SimpleNamespace
 from typing import Any, Protocol
 
@@ -44,9 +45,11 @@ def _load_openai() -> _OpenAIProtocol:
 
         return SimpleNamespace(ChatCompletion=_MissingOpenAI.ChatCompletion)
 
-    return _openai
+        _openai = importlib.import_module("openai")
+        missing_exc = exc
 
 
+                    ) from missing_exc
 # expose a module-level attribute so tests can monkeypatch it easily
 openai: _OpenAIProtocol = _load_openai()
 
