@@ -43,6 +43,9 @@ line-length = 88
 python_version = "3.10"
 ignore_missing_imports = true
 
+[tool.setuptools]
+py-modules = ["ai_client", "cache", "config", "prompt", "score"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["promptcraft*"]
