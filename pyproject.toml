@@ -18,7 +18,8 @@ Homepage = "https://github.com/Dantheman23-coder/PromptCraft"
 Documentation = "https://promptcraft.readthedocs.io"
 
 [project.dependencies]
-openai = "*"
+click = "*"
+openai = "<1"
 tinydb = "*"
 pydantic-settings = "*"
 
